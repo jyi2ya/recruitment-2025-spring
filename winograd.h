@@ -1,6 +1,6 @@
 #pragma once
 
-void winograd_convolution(float *__restrict__ image,
+extern "C" void winograd_convolution(float *__restrict__ image,
                           const int irows,
                           const int icols,
                           const int C,

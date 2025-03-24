@@ -1,1 +1,4 @@
 winograd
+*.o
+libwinograd.a
+target/
