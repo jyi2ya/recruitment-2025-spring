@@ -1,5 +1,6 @@
 #![allow(dead_code, non_snake_case, unused_assignments)]
 use core::mem::size_of;
+use cubecl::prelude::*;
 
 #[derive(Copy, Clone)]
 struct TileIndex {
@@ -437,10 +438,11 @@ fn output_unpacking_store(Y: &[f32], out: &mut [f32], os: OutShape, ti: TilingIn
 fn sgemm(M: i64, N: i64, K: i64, A: &[f32], B: &[f32], C: &mut [f32]) {
     for m in 0..M {
         for n in 0..N {
-            C[(n * M + m) as usize] = 0.;
+            let mut c = 0.;
             for k in 0..K {
-                C[(n * M + m) as usize] += A[(m * K + k) as usize] * B[(n * K + k) as usize];
+                c += A[(m * K + k) as usize] * B[(n * K + k) as usize];
             }
+            C[(n * M + m) as usize] = c;
         }
     }
 }
@@ -528,14 +530,17 @@ pub extern "C" fn winograd_convolution(
     image_transform_w(&packed_image, &mut V, vs, ti, vs.ic * vs.num_tiles);
     image_transform_h(&mut V, vs, ti, vs.ic * vs.num_tiles);
 
+    let indexes = (0..ti.tile_in_w).flat_map(|h| (0..ti.tile_in_h).map(move |w| (h, w)));
     M.chunks_mut((us.oc * vs.num_tiles) as usize)
-        .enumerate()
-        .for_each(|(idx, chunk)| {
-            let h = idx as i64 / ti.tile_in_h;
-            let w = idx as i64 % ti.tile_in_h;
-            let A =
-                &V[(h * ti.tile_in_w * vs.num_tiles * vs.ic + w * vs.num_tiles * us.ic) as usize..];
-            let B = &U[(h * ti.tile_in_w * us.oc * us.ic + w * us.oc * us.ic) as usize..];
+        .zip(indexes)
+        .for_each(|(chunk, (h, w))| {
+            let a_begin =
+                (h * ti.tile_in_w * vs.num_tiles * vs.ic + w * vs.num_tiles * us.ic) as usize;
+            let a_end = a_begin + (vs.num_tiles * us.ic) as usize;
+            let A = &V[a_begin..a_end];
+            let b_begin = (h * ti.tile_in_w * us.oc * us.ic + w * us.oc * us.ic) as usize;
+            let b_end = b_begin + (us.oc * us.ic) as usize;
+            let B = &U[b_begin..b_end];
             sgemm(vs.num_tiles, us.oc, us.ic, A, B, chunk);
         });
 

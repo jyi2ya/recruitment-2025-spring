@@ -2,3 +2,6 @@ winograd
 *.o
 libwinograd.a
 target/
+perf.data
+perf.data.old
+flamegraph.svg

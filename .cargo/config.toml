@@ -1,0 +1,3 @@
+[build]
+target-dir = 'winograd-rs/target'
+rustflags = [ "-Ctarget-cpu=native" ]
