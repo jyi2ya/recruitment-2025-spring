@@ -1,6 +1,6 @@
 #![allow(dead_code, non_snake_case, unused_assignments)]
 use core::mem::size_of;
-use cubecl::prelude::*;
+use cubecl::{linalg::tensor::TensorHandle, prelude::*, wgpu::WgpuRuntime};
 
 #[derive(Copy, Clone)]
 struct TileIndex {
@@ -435,16 +435,84 @@ fn output_unpacking_store(Y: &[f32], out: &mut [f32], os: OutShape, ti: TilingIn
     }
 }
 
-fn sgemm(M: i64, N: i64, K: i64, A: &[f32], B: &[f32], C: &mut [f32]) {
+fn sgemm_kernel_cpu(
+    m: usize,
+    n: usize,
+    M: usize,
+    _N: usize,
+    K: usize,
+    A: &[f32],
+    B: &[f32],
+    C: &mut [f32],
+) {
+    let mut c = 0.;
+    for k in 0..K {
+        c += A[m * K + k] * B[n * K + k];
+    }
+    C[n * M + m] = c;
+}
+
+fn sgemm<RT, F>(M: i64, N: i64, K: i64, A: &[F], B: &[F], C: &mut [F])
+where
+    F: Float + cubecl::CubeElement + cubecl::linalg::matmul::components::MatmulPrecision,
+    RT: cubecl::Runtime,
+{
+    let M: usize = M.try_into().unwrap();
+    let N: usize = N.try_into().unwrap();
+    let K: usize = K.try_into().unwrap();
+    let device = RT::Device::default();
+    let client = RT::client(&device);
+    let input_A = client.create(F::as_bytes(A));
+    let input_B = client.create(F::as_bytes(B));
+    let output_C = client.empty(C.len() * core::mem::size_of::<F>());
+
+    let tensor_A: TensorHandle<RT, F> =
+        cubecl::linalg::tensor::TensorHandle::new_contiguous(vec![M, K], input_A);
+    let tensor_B: TensorHandle<RT, F> =
+        cubecl::linalg::tensor::TensorHandle::new(input_B, vec![K, N], vec![1, K]);
+    let tensor_C: TensorHandle<RT, F> =
+        cubecl::linalg::tensor::TensorHandle::new_contiguous(vec![M, N], output_C);
+
+    cubecl::linalg::matmul::launch_ref::<RT, F>(
+        &cubecl::linalg::matmul::Strategy::Auto,
+        &client,
+        &tensor_A.as_ref(),
+        &tensor_B.as_ref(),
+        &tensor_C.as_ref(),
+    )
+    .unwrap();
+
+    let reshaped: TensorHandle<RT, F> =
+        cubecl::linalg::tensor::TensorHandle::new(tensor_C.handle, vec![N, M], vec![1, N]);
+
+    let output_C: TensorHandle<RT, F> =
+        cubecl::linalg::tensor::into_contiguous(&client, &reshaped.as_ref());
+    let bytes = client.read_one(output_C.handle.binding());
+    let result = F::from_bytes(&bytes);
+
+    C.copy_from_slice(result);
+}
+
+fn sgemm_cpu(M: i64, N: i64, K: i64, A: &[f32], B: &[f32], C: &mut [f32]) {
     for m in 0..M {
         for n in 0..N {
-            let mut c = 0.;
-            for k in 0..K {
-                c += A[(m * K + k) as usize] * B[(n * K + k) as usize];
-            }
-            C[(n * M + m) as usize] = c;
+            sgemm_kernel_cpu(
+                m as usize, n as usize, M as usize, N as usize, K as usize, A, B, C,
+            );
         }
     }
+}
+
+fn do_test() {
+    let a = vec![1., 2., 3., 4.];
+    let b = [5., 6., 7., 8., 9., 10.];
+    let mut c = vec![0.; 6];
+    sgemm_cpu(2, 3, 2, &a, &b, &mut c);
+    dbg!(c);
+    let mut c = vec![0.; 6];
+    sgemm::<WgpuRuntime, f32>(2, 3, 2, &a, &b, &mut c);
+    dbg!(c);
+    panic!("");
 }
 
 #[unsafe(no_mangle)]
@@ -458,6 +526,8 @@ pub extern "C" fn winograd_convolution(
     batch_num: libc::c_int,
     out: *mut libc::c_float,
 ) {
+    // do_test();
+
     let is = ImageShape {
         bs: batch_num as i64,
         ic: input_channel_num as i64,
@@ -541,7 +611,7 @@ pub extern "C" fn winograd_convolution(
             let b_begin = (h * ti.tile_in_w * us.oc * us.ic + w * us.oc * us.ic) as usize;
             let b_end = b_begin + (us.oc * us.ic) as usize;
             let B = &U[b_begin..b_end];
-            sgemm(vs.num_tiles, us.oc, us.ic, A, B, chunk);
+            sgemm::<WgpuRuntime, _>(vs.num_tiles, us.oc, us.ic, A, B, chunk);
         });
 
     output_transform_w(&M, &mut Y, ti, us.oc * vs.num_tiles);

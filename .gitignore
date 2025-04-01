@@ -1,6 +1,8 @@
 winograd
+winograd-debug
 *.o
 libwinograd.a
+libwinograd-debug.a
 target/
 perf.data
 perf.data.old
