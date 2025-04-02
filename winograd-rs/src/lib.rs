@@ -6,7 +6,10 @@ use cubecl::{
     wgpu::{WgpuDevice, WgpuRuntime},
 };
 use rayon::{
-    iter::{IndexedParallelIterator, IntoParallelIterator as _, ParallelIterator},
+    iter::{
+        IndexedParallelIterator, IntoParallelIterator as _, IntoParallelRefMutIterator,
+        ParallelIterator,
+    },
     slice::{ParallelSlice, ParallelSliceMut},
 };
 
@@ -438,30 +441,24 @@ fn filter_packing(filter: &mut [f32], packed_filter: &mut [f32], fs: FilterShape
 fn image_packing(image: &mut [f32], packed_image: &mut [f32], is: InShape, ti: TilingInfo) {
     let _t = timer("image_packing");
     packed_image
-        .par_chunks_exact_mut((ti.tile_in_w * ti.num_tiles * is.input_channel) as usize)
+        .par_chunks_exact_mut((ti.tiles_on_h * ti.tiles_on_w * is.input_channel) as usize)
         .enumerate()
-        .for_each(|(h, chunk)| {
-            for w in 0..ti.tile_in_w {
-                for tile in 0..ti.num_tiles {
-                    for ic in 0..is.input_channel {
-                        let batch = tile / ti.num_tile_per_image;
-                        let h: i64 = h.try_into().unwrap();
-                        let hh: i64 = tile % ti.num_tile_per_image / ti.tiles_on_w;
-                        let ww: i64 = tile % ti.num_tile_per_image % ti.tiles_on_w;
+        .for_each(|(g_idx, chunk)| {
+            let g_idx: i64 = g_idx.try_into().unwrap();
+            let h = g_idx / (ti.tile_in_w * ti.batch_size);
+            let w = g_idx % (ti.tile_in_w * ti.batch_size) / ti.batch_size;
+            let batch = g_idx % ti.batch_size;
 
-                        let image_pos = if hh * 4 + h < is.h && ww * 4 + w < is.w {
-                            Some(
-                                (batch * is.input_channel * is.h * is.w
-                                    + ic * is.h * is.w
-                                    + (hh * 4 + h) * is.w
-                                    + (ww * 4 + w)) as usize,
-                            )
-                        } else {
-                            None
-                        };
+            for hh in 0..Ord::min(ti.tiles_on_h, (is.h - h + 3) / 4) {
+                for ww in 0..Ord::min(ti.tiles_on_w, (is.w - w + 3) / 4) {
+                    for ic in 0..is.input_channel {
                         let offset =
-                            w * ti.num_tiles * is.input_channel + tile * is.input_channel + ic;
-                        chunk[offset as usize] = image_pos.map(|pos| image[pos]).unwrap_or(0.);
+                            hh * ti.tiles_on_w * is.input_channel + ww * is.input_channel + ic;
+                        let image_pos = (batch * is.input_channel * is.h * is.w
+                            + ic * is.h * is.w
+                            + (hh * 4 + h) * is.w
+                            + (ww * 4 + w)) as usize;
+                        chunk[offset as usize] = image[image_pos];
                     }
                 }
             }
@@ -546,12 +543,15 @@ fn sgemm_cpu(M: i64, _N: i64, K: i64, A: &[f32], B: &[f32], C: &mut [f32]) {
     C.par_chunks_exact_mut(M as usize)
         .enumerate()
         .for_each(|(n, chunk)| {
+            let n = n as i64;
             for m in 0..M {
-                let mut c = 0.;
-                for k in 0..K {
-                    c += A[(m * K + k) as usize] * B[(n as i64 * K + k) as usize];
-                }
-                chunk[m as usize] = c;
+                let A_begin = (m * K) as usize;
+                let A_end = A_begin + K as usize;
+                let B_begin = (n * K) as usize;
+                let B_end = B_begin + K as usize;
+                chunk[m as usize] = std::iter::zip(&A[A_begin..A_end], &B[B_begin..B_end])
+                    .map(|(a, b)| a * b)
+                    .sum();
             }
         });
 }
