@@ -62,7 +62,7 @@ void test_on_one_layer(const int layer_idx,
                        const int input_channels,
                        const int output_channels,
                        const int batch,
-                       long *total_flops,
+                       long long *total_flops,
                        double *total_time) {
   const int output_height = image_height - 2;
   const int output_width = image_width - 2;
@@ -76,11 +76,11 @@ void test_on_one_layer(const int layer_idx,
   assert(out != NULL);
 
 #pragma omp parallel for
-  for (long i = 0; i < (long)batch * input_channels * image_height * image_width; i++)
+  for (long long i = 0; i < (long long)batch * input_channels * image_height * image_width; i++)
     image[i] = (float)(i % 10 + 1);
 
 #pragma omp parallel for
-  for (long i = 0; i < output_channels * input_channels * FLT_H * FLT_W; i++)
+  for (long long i = 0; i < output_channels * input_channels * FLT_H * FLT_W; i++)
     filter[i] = (float)(i / (FLT_H * FLT_W) + 1);
 
   if (validation_mode) {  // Verify mode. Check the result
@@ -92,14 +92,14 @@ void test_on_one_layer(const int layer_idx,
     printf("Layer %-2d: (Channel Height Weight Filter Batch) = ", layer_idx);
     printf(
         "(%-3d %-3d %-3d %-3d %-3d) : ", input_channels, image_height, image_width, output_channels, batch);
-    long n;
-    for (n = 0; n < (long)batch * output_height * output_width * output_channels; n++)
+    long long n;
+    for (n = 0; n < (long long)batch * output_height * output_width * output_channels; n++)
       if (fabs((out[n] - out_ref[n]) / out_ref[n]) > 1e-2 || isnan(out[n]) || isinf(out[n])) {
         printf("Validation Failed !");
         printf("winogradConv[%ld] = %f || directConv[%ld] = %f \n", n, out[n], n, out_ref[n]);
         break;
       }
-    if (n == (long)batch * output_height * output_width * output_channels) printf("Validation Passed !\n");
+    if (n == (long long)batch * output_height * output_width * output_channels) printf("Validation Passed !\n");
     free(out_ref);
   } else {
     double start_time = timestamp();
@@ -111,7 +111,7 @@ void test_on_one_layer(const int layer_idx,
     double elapse_time_all = end_time - start_time;
     double elapse_time = elapse_time_all / LOOP_NUM;
     *total_time += elapse_time;
-    long nflops = (long)batch * output_channels * input_channels * (image_height - 2) * (image_width - 2) *
+    long long nflops = (long long)batch * output_channels * input_channels * (image_height - 2) * (image_width - 2) *
                   FLT_H * FLT_W * 2;
     double gflops = (double)nflops * 1.0e-9 / elapse_time;
     *total_flops += nflops;
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
   fclose(input);
 
   double total_time = 0.0;
-  long total_flops = 0;
+  long long total_flops = 0;
   for (int l = 0; l < layer_num; l++) {
     test_on_one_layer(l,
                       validation_mode,

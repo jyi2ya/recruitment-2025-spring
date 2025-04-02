@@ -6,7 +6,7 @@ RUST_TARGET ?= x86_64-unknown-linux-musl
 all: winograd
 
 winograd: libwinograd.a driver.o
-	$(CXX) driver.o libwinograd.a -std=c++11 ${CFLAG} -o winograd
+	$(CXX) -static driver.o libwinograd.a -std=c++11 ${CFLAG} -o winograd
 
 winograd-debug: libwinograd-debug.a driver.o
 	$(CXX) driver.o libwinograd-debug.a -std=c++11 ${CFLAG} -o winograd-debug

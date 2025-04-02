@@ -579,8 +579,6 @@ pub extern "C" fn winograd_convolution(
     batch_num: libc::c_int,
     out: *mut libc::c_float,
 ) {
-    // do_test();
-
     let image_shape = InShape {
         batch_size: batch_num as i64,
         input_channel: input_channel_num as i64,
@@ -706,7 +704,7 @@ pub extern "C" fn winograd_convolution(
     {
         let _t = timer("gemm       ");
         std::thread::scope(|scope| {
-            let max_gpu_concurrency = 2;
+            let max_gpu_concurrency = 3;
             let max_cpu_concurrency = 4;
 
             let indexes = (0..ti.tile_in_w)
