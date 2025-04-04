@@ -1,12 +1,12 @@
 CFLAG = -O3 -g -Wall -fopenmp
 CFLAGS = -O3 -Wall -Wextra -std=c99
 CXX ?= g++
-RUST_TARGET ?= x86_64-unknown-linux-musl
+RUST_TARGET ?= x86_64-unknown-linux-gnu
 
 all: winograd
 
 winograd: libwinograd.a driver.o
-	$(CXX) -static driver.o libwinograd.a -std=c++11 ${CFLAG} -o winograd
+	$(CXX) driver.o libwinograd.a -std=c++11 ${CFLAG} -o winograd
 
 winograd-debug: libwinograd-debug.a driver.o
 	$(CXX) driver.o libwinograd-debug.a -std=c++11 ${CFLAG} -o winograd-debug
