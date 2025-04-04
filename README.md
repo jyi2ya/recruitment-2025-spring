@@ -1,3 +1,5 @@
+# 不要使用 Rust，会变得不幸
+
 # 七边形 2025 年春季招新题目！
 
 嗨，欢迎来做七边形的招新题！
@@ -6,7 +8,7 @@
 
 * 我们将会提供七边形的机器供大家在上面编程和调试（具体细节会在笔试 QQ 群中公布）。最终加速比（也就是性能表现）将会以在七边形机器上测试的结果为准。
 * 集群使用 [spack](https://spack.readthedocs.io/en/latest/) 进行包管理，你可以通过spack找到一些你想要的包。
-* 默认的机器（即登录节点）仅有一台，开启了超线程且没有 GPU。但队内集群中数个计算节点包含GPU。集群通过 [slurm](https://slurm.schedmd.com/documentation.html) 进行管理，如果你编写了很酷的 GPU 加速代码，请使用 slurm 运行你的应用程序。 
+* 默认的机器（即登录节点）仅有一台，开启了超线程且没有 GPU。但队内集群中数个计算节点包含GPU。集群通过 [slurm](https://slurm.schedmd.com/documentation.html) 进行管理，如果你编写了很酷的 GPU 加速代码，请使用 slurm 运行你的应用程序。
 * 我们强烈建议使用slurm在计算节点上运行任务，在登录节点上长时间运行重负载的任务是**不允许**的，并且测出来的性能数据也**不准确**。
 * 如果遇到无法解决的问题，可以在联系笔试QQ群管理员获取相关支持。
 
@@ -124,34 +126,34 @@ sbatch run.sh
 你会看见如下输出（也是small.conf的baseline）。
 
 ```bash
-Layer 0 :  Elapse time 0.013987 ms. (    0.99 GFlops) 
-Layer 1 :  Elapse time 0.039339 ms. (    1.76 GFlops) 
-Layer 2 :  Elapse time 1.464367 ms. (    1.70 GFlops) 
-Layer 3 :  Elapse time 25.849660 ms. (    6.57 GFlops) 
-Layer 4 :  Elapse time 826.042652 ms. (    6.58 GFlops) 
-Total elapse time: 0.853410. (    6.57 GFlops) 
+Layer 0 :  Elapse time 0.013987 ms. (    0.99 GFlops)
+Layer 1 :  Elapse time 0.039339 ms. (    1.76 GFlops)
+Layer 2 :  Elapse time 1.464367 ms. (    1.70 GFlops)
+Layer 3 :  Elapse time 25.849660 ms. (    6.57 GFlops)
+Layer 4 :  Elapse time 826.042652 ms. (    6.58 GFlops)
+Total elapse time: 0.853410. (    6.57 GFlops)
 ```
 
 而vgg16.conf的baseline如下（该测试相当耗时）：
 
 ```bash
-Layer 0 :  Elapse time 8186.878602 ms. (    1.33 GFlops) 
-Layer 1 :  Elapse time 40464.980682 ms. (    5.75 GFlops) 
-Layer 2 :  Elapse time 18053.032001 ms. (    6.33 GFlops) 
-Layer 3 :  Elapse time 35898.586353 ms. (    6.36 GFlops) 
-Layer 4 :  Elapse time 16899.485032 ms. (    6.51 GFlops) 
-Layer 5 :  Elapse time 41035.766999 ms. (    5.36 GFlops) 
-Layer 6 :  Elapse time 41052.740335 ms. (    5.36 GFlops) 
-Layer 7 :  Elapse time 40832.878272 ms. (    5.39 GFlops) 
-Layer 8 :  Elapse time 20145.650625 ms. (    5.07 GFlops) 
-Layer 9 :  Elapse time 43018.066645 ms. (    4.75 GFlops) 
-Layer 10:  Elapse time 42978.799979 ms. (    4.75 GFlops) 
-Layer 11:  Elapse time 43129.189968 ms. (    4.73 GFlops) 
-Layer 12:  Elapse time 8022.422632 ms. (    5.42 GFlops) 
-Layer 13:  Elapse time 7970.119715 ms. (    5.46 GFlops) 
-Layer 14:  Elapse time 7960.529010 ms. (    5.46 GFlops) 
-Layer 15:  Elapse time 7955.145677 ms. (    5.47 GFlops) 
-Total elapse time: 423.604273. (    5.30 GFlops) 
+Layer 0 :  Elapse time 8186.878602 ms. (    1.33 GFlops)
+Layer 1 :  Elapse time 40464.980682 ms. (    5.75 GFlops)
+Layer 2 :  Elapse time 18053.032001 ms. (    6.33 GFlops)
+Layer 3 :  Elapse time 35898.586353 ms. (    6.36 GFlops)
+Layer 4 :  Elapse time 16899.485032 ms. (    6.51 GFlops)
+Layer 5 :  Elapse time 41035.766999 ms. (    5.36 GFlops)
+Layer 6 :  Elapse time 41052.740335 ms. (    5.36 GFlops)
+Layer 7 :  Elapse time 40832.878272 ms. (    5.39 GFlops)
+Layer 8 :  Elapse time 20145.650625 ms. (    5.07 GFlops)
+Layer 9 :  Elapse time 43018.066645 ms. (    4.75 GFlops)
+Layer 10:  Elapse time 42978.799979 ms. (    4.75 GFlops)
+Layer 11:  Elapse time 43129.189968 ms. (    4.73 GFlops)
+Layer 12:  Elapse time 8022.422632 ms. (    5.42 GFlops)
+Layer 13:  Elapse time 7970.119715 ms. (    5.46 GFlops)
+Layer 14:  Elapse time 7960.529010 ms. (    5.46 GFlops)
+Layer 15:  Elapse time 7955.145677 ms. (    5.47 GFlops)
+Total elapse time: 423.604273. (    5.30 GFlops)
 ```
 
 
@@ -218,9 +220,9 @@ make clean
 ```bash
 #!/bin/bash
 
-eval `spack load --sh cuda` 
+eval `spack load --sh cuda`
 ```
-   
+
 ### 技术答辩PPT
 
 **在代码提交截止时间，你需要制作并提交一份 ppt**，内容如下：
